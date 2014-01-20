@@ -47,7 +47,13 @@ class pivEval(object):
             plt.imshow(self.im2)
             plt.show()
 
-        self.PIV_scan(50)
+        winSize = self.s0
+        for i in range(0,self.nPasses):
+            print('Pass',i+1)
+            print('Winsize =',winSize)
+            self.PIV_scan(winSize)
+            winSize = np.int(np.round(winSize/2))
+            
         
 
     #def generateGrid(self):
@@ -64,15 +70,45 @@ class pivEval(object):
         for i in range(0,1):#range(0,np.int(self.im1.shape[0]/winSize)):
             for j in range(0,1):#range(0,np.int(self.im1.shape[1]/winSize)):
                 a = im1[i*winSize:(i+1)*winSize,j*winSize:(j+1)*winSize]
-                b = im2_padded[i*winSize:(i+3)*winSize,j*winSize:(j+3)*winSize]
+
+                # Add check: if range[b] < min, skip cross_correlation
+                # (To account for window with no particles!)
+                
+                xShift = self.x[np.int(np.round((i+0.5)*winSize)),np.int(np.round((j+0.5)*winSize))]
+                yShift = self.y[np.int(np.round((i+0.5)*winSize)),np.int(np.round((j+0.5)*winSize))]
+
+                b = im2_padded[i*winSize+xShift:(i+3)*winSize+xShift,j*winSize+yShift:(j+3)*winSize+yShift]
                 c, maxIndex = xcorr(a,b)
-                self.x[i*winSize:(i+1)*winSize,j*winSize:(j+1)*winSize] = self.x[i+winSize:(i+1)*winSize,j*winSize:(j+1)*winSize] # + !!!!!!!!!!!!! Compute!!!
+                print(maxIndex)
+                
+                xShift = 4*winSize/2 - 1 - maxIndex[0]
+                yShift = 4*winSize/2 - 1 - maxIndex[1]
+                self.x[i*winSize:(i+1)*winSize,j*winSize:(j+1)*winSize] = self.x[i*winSize:(i+1)*winSize,j*winSize:(j+1)*winSize] + xShift 
+                self.y[i*winSize:(i+1)*winSize,j*winSize:(j+1)*winSize] = self.y[i*winSize:(i+1)*winSize,j*winSize:(j+1)*winSize] + yShift
+
+        if np.mod(im1.shape[0],winSize)!=0:
+            # Execute along right hand strip!
+            print('add code!')
+
+            for i in range(0,np.int(self.im1.shape[0]/winSize)):
+                a = im1[i*winSize:(i+1)*winSize,im1.shape[1]-winSize-1:im1.shape[1]]
+
+                # Add check: if range[b] < min, skip cross_correlation
+                # (To account for window with no particles!)
+                
+            
+
+        if np.mod(im1.shape[1],winSize)!=0:
+            # Execute along bottom strip!
+            print('add code!')
 
         self.im2_padded = im2_padded
         self.a = a
         self.b = b
         self.c = c
         self.maxIndex = maxIndex
+        self.xShift = xShift
+        self.yShift = yShift
 
 
 
