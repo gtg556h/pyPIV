@@ -80,74 +80,81 @@ class pivEval(object):
 
         im2_padded=np.zeros([im1.shape[0]+2*winSize,im1.shape[1]+2*winSize])
         im2_padded[winSize:im2_padded.shape[0]-winSize,winSize:im2_padded.shape[1]-winSize] = im2
-        for i in range(0,np.int(self.im1.shape[0]/winSize)):
-            for j in range(0,np.int(self.im1.shape[1]/winSize)):
+        
+        # Analyze n-rows, m-columns:
+        m = np.int(self.im1.shape[0]/winSize)
+        n = np.int(self.im1.shape[1]/winSize)
 
-                a = im1[i*winSize:(i+1)*winSize,j*winSize:(j+1)*winSize]
-
-                # Add check: if range[b] < min, skip cross_correlation
-                # (To account for window with no particles!)
-
-                if 1:
-                    
-                    xShift = self.x[np.int(np.round((i+0.5)*winSize)),np.int(np.round((j+0.5)*winSize))]
-                    yShift = self.y[np.int(np.round((i+0.5)*winSize)),np.int(np.round((j+0.5)*winSize))]
-
-                    b = im2_padded[i*winSize+xShift:(i+3)*winSize+xShift,j*winSize+yShift:(j+3)*winSize+yShift]
-                    c, maxIndex,xCurrent,yCurrent = xcorr(a,b,winSize)
-                        
-                    self.x[i*winSize:(i+1)*winSize,j*winSize:(j+1)*winSize] = self.x[i*winSize:(i+1)*winSize,j*winSize:(j+1)*winSize] + xCurrent 
-                    self.y[i*winSize:(i+1)*winSize,j*winSize:(j+1)*winSize] = self.y[i*winSize:(i+1)*winSize,j*winSize:(j+1)*winSize] + yCurrent
+        # Initialize x, y arrays for accumulating NEW shift.  Compile with self.x, self.y, only after full scan (due to potential overlap in edges)
+        self.xBuild = np.zeros(im1.shape)
+        self.yBuild = np.zeros(im1.shape)
 
 
+        # Main grid scan:
+        for i in range(0,m):
+            for j in range(0,n):
+
+                xRange = slice(i*winSize,(i+1)*winSize)
+                yRange = slice(j*winSize,(j+1)*winSize)
+
+                self.scanWindow(xRange,yRange,im1,im2_padded)
+
+
+        # Address the piece on bottom row:
         if np.mod(im1.shape[0],winSize)!=0:
-            # Execute along right hand strip!
-            stripWidth = np.mod(im1.shape[0],winSize)
-            print('add code!')
 
-            for i in range(0,np.int(self.im1.shape[0]/winSize)):
-                a = im1[i*winSize:(i+1)*winSize,im1.shape[1]-winSize-1:im1.shape[1]]
-                if 1:  # Add check: if range[b] < min, skip cross_correlation
-                       # (To account for window with no particles!)
-                    xShift = self.x[np.int(np.round((i+0.5)*winSize)),np.int(np.round(a.shape[0]-winSize/2))]
-                    yShift = self.y[np.int(np.round((i+0.5)*winSize)),np.int(np.round(a.shape[0]-winSize/2))]
+            for j in range(0,n):
+                xRange = slice(im1.shape[0]-winSize-1, im1.shape[0])
+                yRange = slice(j*winSize,(j+1)*winSize)
 
-                    b = im2_padded[i*winSize+xShift:(i+3)*winSize+xShift,im1.shape[1]-2*winSize-1:im1.shape[1]+winSize]
-                    c, maxIndex, xCurrent, yCurrent = xcorr(a,b,winSize)
+                self.scanWindow(xRange,yRange,im1,im2_padded)
 
-                    self.x[i*winSize:(i+1)*winSize,a.shape[1]-stripWidth-1:a.shape[1]] = self.x[i*winSize:(i+1)*winSize,a.shape[1]-stripWidth-1:a.shape[1]] + xCurrent
-                    self.y[i*winSize:(i+1)*winSize,a.shape[1]-stripWidth-1:a.shape[1]] = self.y[i*winSize:(i+1)*winSize,a.shape[1]-stripWidth-1:a.shape[1]] + yCurrent
-                #pdb.set_trace()
 
-                
+        # Address the piece on right column:
         if np.mod(im1.shape[1],winSize)!=0:
-            # Execute along right hand strip!
-            stripWidth = np.mod(im1.shape[0],winSize)
-            print('add code!')
 
-            for j in range(0,np.int(self.im1.shape[0]/winSize)):
-                print(j)
-                a = im1[im1.shape[0]-winSize-1:im1.shape[0],j*winSize:(j+1)*winSize]
-                if 1:  # Add check: if range[b] < min, skip cross_correlation
-                       # (To account for window with no particles!)
-                    xShift = self.x[np.int(np.round(a.shape[1]-winSize/2)),np.int(np.round((j+0.5)*winSize))]
-                    yShift = self.y[np.int(np.round(a.shape[1]-winSize/2)),np.int(np.round((j+0.5)*winSize))]
+            for i in range(0,m):
+                xRange = slice(i*winSize,(i+1)*winSize)
+                yRange = slice(im1.shape[1]-winSize-1,im1.shape[1])
 
-                    b = im2_padded[im1.shape[0]-2*winSize-1:im1.shape[0]+winSize, j*winSize+xShift:(j+3)*winSize+xShift]
-
-                    c, maxIndex, xCurrent, yCurrent = xcorr(a,b,winSize)
-
-                    self.x[a.shape[0]-stripWidth-1:a.shape[0],j*winSize:(j+1)*winSize] = self.x[a.shape[0]-stripWidth-1:a.shape[0], j*winSize:(j+1)*winSize] + xCurrent
-                    self.y[a.shape[0]-stripWidth-1:a.shape[0],j*winSize:(j+1)*winSize] = self.y[a.shape[0]-stripWidth-1:a.shape[0], j*winSize:(j+1)*winSize] + yCurrent
+                self.scanWindow(xRange,yRange,im1,im2_padded)
 
 
-        self.im2_padded = im2_padded
-        self.a = a
-        self.b = b
-        self.c = c
-        self.maxIndex = maxIndex
-        self.xShift = xShift
-        self.yShift = yShift
+        # Update x, y arrays with current values:
+        self.x = self.x + self.xBuild
+        self.y = self.y + self.yBuild
+
+
+        # Debugging variables:
+        #self.im2_padded = im2_padded
+        #self.a = a
+        #self.b = b
+        #self.c = c
+        #self.maxIndex = maxIndex
+        #self.xShift = xShift
+        #self.yShift = yShift
+
+########################################################################
+
+    def scanWindow(self,xRange,yRange,im1,im2_padded):
+
+        a = im1[xRange, yRange]
+
+            # Add check: if range[b] < min, skip cross_correlation
+            # (To account for window with no particles!)
+
+            if 1:
+
+                xShift = self.x[np.int(np.mean([xRange.start,xRange.stop])),np.int(np.mean([yRange.start,yRange.stop]))]
+                yShift = self.y[np.int(np.mean([xRange.start,xRange.stop])),np.int(np.mean([yRange.start,yRange.stop]))]
+
+                b = im2_padded[xRange.start + xShift:xRange.end + 3*winSize + xShift, yRange.start + yShift:yRange.end + 3*winSize + yShift]
+
+                c, maxIndex,xCurrent,yCurrent = xcorr(a,b,winSize)
+
+                # Note: in following lines, I'm overwriting some previously computed in the central region during border scans...  Probably not an issue...
+                self.xBuild[xRange,yRange] = xCurrent
+                self.yBuild[xRange,yRange] = yCurrent
 
 
 
