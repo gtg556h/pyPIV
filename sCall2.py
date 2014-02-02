@@ -9,7 +9,15 @@ import pdb
 a = np.zeros([50,50])
 b = np.zeros([50,50])
 a[25,25] = 10
+a[10,10] = 10
+a[10,40] = 10
+a[40,10] = 10
+a[40,40] = 10
 b[30,25] = 10
+b[15,10] = 10
+b[15,40] = 10
+b[45,10] = 10
+b[45,40] = 10
 a = pivLib.blur(a,2)
 b = pivLib.blur(b,2)
 scipy.misc.imsave('a.png',a)

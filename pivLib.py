@@ -71,6 +71,7 @@ class pivEval(object):
 
     #def generateGrid(self):
 
+
 ############################################################
 
     def PIV_scan(self, winSize):
@@ -97,7 +98,7 @@ class pivEval(object):
                 xRange = slice(i*winSize,(i+1)*winSize)
                 yRange = slice(j*winSize,(j+1)*winSize)
 
-                self.scanWindow(xRange,yRange,im1,im2_padded)
+                self.scanWindow(xRange,yRange,im1,im2_padded,winSize)
 
 
         # Address the piece on bottom row:
@@ -107,7 +108,7 @@ class pivEval(object):
                 xRange = slice(im1.shape[0]-winSize-1, im1.shape[0])
                 yRange = slice(j*winSize,(j+1)*winSize)
 
-                self.scanWindow(xRange,yRange,im1,im2_padded)
+                self.scanWindow(xRange,yRange,im1,im2_padded,winSize)
 
 
         # Address the piece on right column:
@@ -117,7 +118,7 @@ class pivEval(object):
                 xRange = slice(i*winSize,(i+1)*winSize)
                 yRange = slice(im1.shape[1]-winSize-1,im1.shape[1])
 
-                self.scanWindow(xRange,yRange,im1,im2_padded)
+                self.scanWindow(xRange,yRange,im1,im2_padded,winSize)
 
 
         # Update x, y arrays with current values:
@@ -136,28 +137,65 @@ class pivEval(object):
 
 ########################################################################
 
-    def scanWindow(self,xRange,yRange,im1,im2_padded):
+    def scanWindow(self,xRange,yRange,im1,im2_padded,winSize):
 
         a = im1[xRange, yRange]
 
             # Add check: if range[b] < min, skip cross_correlation
             # (To account for window with no particles!)
 
-            if 1:
+        if 1:
 
-                xShift = self.x[np.int(np.mean([xRange.start,xRange.stop])),np.int(np.mean([yRange.start,yRange.stop]))]
-                yShift = self.y[np.int(np.mean([xRange.start,xRange.stop])),np.int(np.mean([yRange.start,yRange.stop]))]
+            xShift = self.x[np.int(np.mean([xRange.start,xRange.stop])),np.int(np.mean([yRange.start,yRange.stop]))]
+            yShift = self.y[np.int(np.mean([xRange.start,xRange.stop])),np.int(np.mean([yRange.start,yRange.stop]))]
 
-                b = im2_padded[xRange.start + xShift:xRange.end + 3*winSize + xShift, yRange.start + yShift:yRange.end + 3*winSize + yShift]
+            b = im2_padded[xRange.start + xShift:xRange.stop + 3*winSize + xShift, yRange.start + yShift:yRange.stop + 3*winSize + yShift]
 
-                c, maxIndex,xCurrent,yCurrent = xcorr(a,b,winSize)
+            c, maxIndex,xCurrent,yCurrent = xcorr(a,b,winSize)
+            pdb.set_trace()
 
-                # Note: in following lines, I'm overwriting some previously computed in the central region during border scans...  Probably not an issue...
-                self.xBuild[xRange,yRange] = xCurrent
-                self.yBuild[xRange,yRange] = yCurrent
+            # Note: in following lines, I'm overwriting some previously computed in the central region during border scans...  Probably not an issue...
+            self.xBuild[xRange,yRange] = xCurrent
+            self.yBuild[xRange,yRange] = yCurrent
+
+##########################################################################
 
 
+    def plot2D(self,Z1,Z2=0):
+        X1 = np.arange(0,Z1.shape[0])
+        Y1 = np.arange(0,Z1.shape[1])
+        X1, Y1 = np.meshgrid(X1, Y1)
+    
+        fig = plt.figure()
+        if Z2==0:
+            
+            ax = fig.add_subplot(111, projection='3d')
+            surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            #ax.set_zlim(-1.01,1.01)
+            ax.zaxis.set_major_locator(LinearLocator(10))
+            ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
 
+            fig.colorbar(surf, shrink=0.5, aspect=5)
+        else: 
+            pdb.set_trace()
+            ax1 = fig.add_subplot(121, projection='3d')
+            surf1 = ax1.plot_surface(X1, Y1, Z1, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            ax1.zaxis.set_major_locator(LinearLocator(10))
+            ax1.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+            
+            X2 = np.arange(0,Z2.shape[1])
+            Y2 = np.arange(0,Z2.shape[0])
+            X2, Y2 = np.meshgrid(X2,Y2)
+
+            ax2 = fig.add_subplot(122,projection='3d')
+            surf2 = ax2.plot_surface(X2, Y2, Z2, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+            ax2.zaxis.set_major_locator(LinearLocator(10))
+            ax2.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+   
+
+        plt.show()
+
+ 
 ############################################################
 ############################################################
 ############################################################
@@ -181,19 +219,36 @@ def blur(z, sigma=2):
 
 ############################################################
 
-def plotXCorr(Z):
-    X = np.arange(0,Z.shape[0])
-    Y = np.arange(0,Z.shape[1])
-    X, Y = np.meshgrid(X, Y)
+def plot2D(Z1,Z2=0):
+    X1 = np.arange(0,Z1.shape[0])
+    Y1 = np.arange(0,Z1.shape[1])
+    X1, Y1 = np.meshgrid(X1, Y1)
 
     fig = plt.figure()
-    #ax = fig.gca(projection='3d')
-    ax = fig.add_subplot(111, projection='3d')
-    surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-    #ax.set_zlim(-1.01,1.01)
-    ax.zaxis.set_major_locator(LinearLocator(10))
-    ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+    if type(Z2)==int:
+        
+        ax = fig.add_subplot(111, projection='3d')
+        surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        #ax.set_zlim(-1.01,1.01)
+        ax.zaxis.set_major_locator(LinearLocator(10))
+        ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
 
-    fig.colorbar(surf, shrink=0.5, aspect=5)
+        fig.colorbar(surf, shrink=0.5, aspect=5)
+    else: 
+        ax1 = fig.add_subplot(121, projection='3d')
+        surf1 = ax1.plot_surface(X1, Y1, Z1, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        ax1.zaxis.set_major_locator(LinearLocator(10))
+        ax1.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+        
+        X2 = np.arange(0,Z2.shape[1])
+        Y2 = np.arange(0,Z2.shape[0])
+        X2, Y2 = np.meshgrid(X2,Y2)
+
+        ax2 = fig.add_subplot(122,projection='3d')
+        surf2 = ax2.plot_surface(X2, Y2, Z2, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        ax2.zaxis.set_major_locator(LinearLocator(10))
+        ax2.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+
     plt.show()
-    
+
+
